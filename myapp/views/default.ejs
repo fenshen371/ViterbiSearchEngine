@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>CSCI 572 Homework</title>
+  <meta charset="utf-8">
+  <meta http-equiv="Cache-control" content="no-cache">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+  <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.js"></script>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+	  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+	<style>
+  	.pr_cbox{
+		text-align: right;
+	}
+	label{
+		margin-top: 5px;
+	}
+  </style>
+</head>
+<body>
+	<script>
+		var socket = io.connect();
+		socket.on('res', function(data){
+			//var res_txt_p = $("<p/>").html("Number of documents found: " + data['Res']['numFound'])
+			$('#numFoundInfo').html("<label>Number of documents found: " + data['Res']['numFound'] + "</label>");
+			$("#result").html("");
+			if (data.Res.res.length > 0){
+				for (var i = 0; i < data.Res.res.length; i++){
+					var resi = data['Res']['res'][i];
+					var res_txt = '<div class="row">' +
+								  	'<div class="col-sm-12">' +
+										'<a href="' + resi['url'] + '" target="_blank">' +
+											'<h5>' + resi['title'] + '</h5>' + 
+										'</a>' +
+										'<p>size: ' + resi['size'] + 
+											'&nbsp;&nbsp;&nbsp;author: ' + resi['author'] + 
+											'&nbsp;&nbsp;&nbsp;date created: ' + resi['date'] +
+										'</p>' + 
+									'</div>' +
+								   '</div>';
+					$("#result").append(res_txt);
+				}
+			}
+		});
+		socket.on('check_result', function(data){
+			var msg = "";
+			if (data['correct'] == false)
+				var msg = "<label>Did you mean: <a href='#' onclick='fineSearch(); return false;' id='suggestMsg'>" + data['suggestion'] + "</a></label>";
+			$("#checkResult").html(msg);
+		});
+		$(document).ready(function(){
+			$('#query').autocomplete({
+				source:'http://localhost:3000/suggest',
+				select: function(event, ui){
+					$('#query').val(ui.item.value);
+					initQuery(true);
+				}
+			});
+			$('#query').keypress(function(e) {
+				if (e.keyCode == $.ui.keyCode.ENTER)
+				{
+					initQuery(true);
+					$('#query').autocomplete('close');
+				}
+			});
+			$('#searchBtn').click(function(){
+				initQuery(true);
+			});
+			$('#suggestMsg').click(function(){
+				$('#query').val($('#suggestMsg').text());
+				initQuery(false);
+			});
+		});
+		function initQuery(needCheck){
+			//test if the query string is blank
+			var queryKeyWords = $('#query').val();
+			var isBlank = !queryKeyWords || /^\s*$/.test(queryKeyWords);
+			if (!isBlank)
+				socket.emit('query_data', {'q' : queryKeyWords,
+											'needCheck' : needCheck,
+											'pr' : $('#pr').prop("checked")});
+		}
+		function fineSearch(){
+			$('#query').val($('#suggestMsg').text());
+			$('#checkResult').html('');
+			initQuery(false);
+		}
+	</script>
+	<div class="container" >
+		<div class = "row">
+			<div class="col-sm-1"></div>
+			<div class="col-sm-2">
+				<div class="pr_cbox">
+					<label><input type="checkbox" id="pr" value=""></input> PageRank</label>
+				</div>
+			</div>
+			<div class="col-sm-6">
+				<div class="input-group">
+					<input type="text" class="form-control" id="query" placeholder="Search for..."></input>
+					<span class="input-group-btn">
+						<button type="button" class="btn btn-primary" id="searchBtn">
+							<span class="glyphicon glyphicon-search"></span>
+						</button>
+					</span>
+				</div>
+			</div>
+			<div class="col-sm-3"></div>
+		</div>
+		<div class="row">
+			<div class="col-sm-2"></div>
+			<div class="col-sm-8" id="numFoundInfo"></div>
+			<div class="col-sm-2"></div>
+		</div>
+		<div class="row">
+			<div class="col-sm-2"></div>
+			<div class="col-sm-8" id="checkResult"></div>
+			<div class="col-sm-2"></div>
+		</div>
+		<div class="row">
+			<div class="col-sm-3"></div>
+			<div class="col-sm-7" id="result"></div>
+			<div class="col-sm-2"></div>
+		</div>
+	</div>
+</body>
+</html>
